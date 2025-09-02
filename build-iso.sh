@@ -47,7 +47,7 @@ check_prerequisites() {
     
     # Check if mkisofs/genisoimage is installed
     if ! command -v mkisofs >/dev/null 2>&1 && ! command -v genisoimage >/dev/null 2>&1; then
-        print_error "Neither mkisofs nor genisoimage found. Please install cdrtools."
+        print_error "Neither mkisofs nor genisoimage found. Please install genisoimage."
         exit 1
     fi
     

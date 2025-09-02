@@ -146,16 +146,16 @@ local-hostname: fulldevvm
 hostname: fulldevvm
 EOF
 
-# Create cloud-init ISO
-print_status "Creating cloud-init configuration ISO..."
-if command -v mkisofs >/dev/null 2>&1; then
-    mkisofs -output output/cloud-init.iso -volid cidata -joliet -rock output/cloud-init/
-elif command -v genisoimage >/dev/null 2>&1; then
-    genisoimage -output output/cloud-init.iso -volid cidata -joliet -rock output/cloud-init/
-else
-    print_error "Neither mkisofs nor genisoimage found. Please install one of them."
-    exit 1
-fi
+    # Create cloud-init ISO
+    print_status "Creating cloud-init configuration ISO..."
+    if command -v genisoimage >/dev/null 2>&1; then
+        genisoimage -output output/cloud-init.iso -volid cidata -joliet -rock output/cloud-init/
+    elif command -v mkisofs >/dev/null 2>&1; then
+        mkisofs -output output/cloud-init.iso -volid cidata -joliet -rock output/cloud-init/
+    else
+        print_error "Neither genisoimage nor mkisofs found. Please install genisoimage."
+        exit 1
+    fi
 
 print_success "Created cloud-init configuration"
 
