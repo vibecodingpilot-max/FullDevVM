@@ -69,12 +69,37 @@ create_build_dir() {
 download_ubuntu_iso() {
     print_status "Downloading Ubuntu 22.04 server ISO..."
     
-    UBUNTU_ISO_URL="https://releases.ubuntu.com/22.04/ubuntu-22.04.4-live-server-amd64.iso"
-    UBUNTU_ISO="$ISO_BUILD_DIR/ubuntu-22.04.4-live-server-amd64.iso"
+    # Try multiple Ubuntu ISO URLs
+    UBUNTU_ISO_URLS=(
+        "https://releases.ubuntu.com/22.04/ubuntu-22.04.4-live-server-amd64.iso"
+        "https://releases.ubuntu.com/22.04/ubuntu-22.04.3-live-server-amd64.iso"
+        "https://releases.ubuntu.com/22.04/ubuntu-22.04.2-live-server-amd64.iso"
+        "https://releases.ubuntu.com/22.04/ubuntu-22.04.1-live-server-amd64.iso"
+        "https://releases.ubuntu.com/22.04/ubuntu-22.04-live-server-amd64.iso"
+    )
+    
+    UBUNTU_ISO="$ISO_BUILD_DIR/ubuntu-22.04-live-server-amd64.iso"
     
     if [ ! -f "$UBUNTU_ISO" ]; then
-        curl -L -o "$UBUNTU_ISO" "$UBUNTU_ISO_URL"
-        print_success "Downloaded Ubuntu ISO"
+        for url in "${UBUNTU_ISO_URLS[@]}"; do
+            print_status "Trying: $url"
+            if curl -L -o "$UBUNTU_ISO" "$url" --fail --silent --show-error; then
+                # Verify it's actually an ISO file
+                if file "$UBUNTU_ISO" | grep -q "ISO 9660"; then
+                    print_success "Downloaded valid Ubuntu ISO"
+                    return 0
+                else
+                    print_warning "Downloaded file is not a valid ISO, trying next URL..."
+                    rm -f "$UBUNTU_ISO"
+                fi
+            else
+                print_warning "Failed to download from $url, trying next URL..."
+            fi
+        done
+        
+        print_error "Failed to download a valid Ubuntu ISO from all URLs"
+        print_status "Falling back to cloud image method..."
+        return 1
     else
         print_status "Ubuntu ISO already exists"
     fi
@@ -356,16 +381,84 @@ cleanup() {
     print_success "Cleanup completed"
 }
 
+# Fallback: Create ISO from cloud image
+create_iso_from_cloud_image() {
+    print_status "Creating ISO from cloud image method..."
+    
+    # Define the final ISO path
+    FINAL_ISO="output/FullDevVM.iso"
+    
+    # Use the existing quick-setup method
+    if [ -f "output/FullDevVM.qcow2" ]; then
+        print_status "Using existing FullDevVM.qcow2"
+    else
+        print_status "Running quick-setup to create VM image..."
+        ./quick-setup.sh
+    fi
+    
+    # Create a simple ISO that contains the QCOW2 image
+    print_status "Creating bootable ISO with QCOW2 image..."
+    
+    # Create ISO structure
+    ISO_CONTENTS="$ISO_BUILD_DIR/contents"
+    mkdir -p "$ISO_CONTENTS"
+    
+    # Copy the QCOW2 image
+    cp "output/FullDevVM.qcow2" "$ISO_CONTENTS/"
+    cp "output/cloud-init.iso" "$ISO_CONTENTS/" 2>/dev/null || true
+    
+    # Create a simple boot script
+    cat > "$ISO_CONTENTS/README.txt" << 'EOF'
+FullDevVM - Complete Development Environment
+
+This ISO contains a pre-configured Ubuntu development VM.
+
+To use:
+1. Extract FullDevVM.qcow2 from this ISO
+2. Use with any virtualization platform:
+   - UTM (macOS)
+   - VirtualBox
+   - VMware
+   - QEMU/KVM
+   - Parallels
+
+Connection details:
+- SSH: ssh dev@localhost -p 2222
+- Web: http://localhost:6080
+- VNC: localhost:5901
+
+Login: dev / dev123
+
+For more information, visit: https://github.com/vibecodingpilot-max/FullDevVM
+EOF
+    
+    # Create the ISO
+    if command -v genisoimage >/dev/null 2>&1; then
+        genisoimage -output "$FINAL_ISO" -volid "FullDevVM" -joliet -rock "$ISO_CONTENTS"
+    else
+        mkisofs -output "$FINAL_ISO" -volid "FullDevVM" -joliet -rock "$ISO_CONTENTS"
+    fi
+    
+    print_success "Created ISO from cloud image method"
+}
+
 # Main execution
 main() {
     check_prerequisites
     create_build_dir
-    download_ubuntu_iso
-    extract_iso
-    create_cloud_init
-    modify_boot_config
-    create_iso
-    create_instructions
+    
+    # Try to download Ubuntu ISO first
+    if download_ubuntu_iso; then
+        extract_iso
+        create_cloud_init
+        modify_boot_config
+        create_iso
+        create_instructions
+    else
+        # Fallback to cloud image method
+        create_iso_from_cloud_image
+    fi
+    
     cleanup
     
     echo
