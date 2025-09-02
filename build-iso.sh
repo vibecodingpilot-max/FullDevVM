@@ -84,9 +84,17 @@ download_ubuntu_iso() {
         for url in "${UBUNTU_ISO_URLS[@]}"; do
             print_status "Trying: $url"
             if curl -L -o "$UBUNTU_ISO" "$url" --fail --silent --show-error; then
+                # Check file size first (ISOs should be > 100MB)
+                FILE_SIZE=$(stat -f%z "$UBUNTU_ISO" 2>/dev/null || stat -c%s "$UBUNTU_ISO" 2>/dev/null || echo "0")
+                if [ "$FILE_SIZE" -lt 104857600 ]; then  # Less than 100MB
+                    print_warning "Downloaded file too small ($FILE_SIZE bytes), likely a redirect page"
+                    rm -f "$UBUNTU_ISO"
+                    continue
+                fi
+                
                 # Verify it's actually an ISO file
                 if file "$UBUNTU_ISO" | grep -q "ISO 9660"; then
-                    print_success "Downloaded valid Ubuntu ISO"
+                    print_success "Downloaded valid Ubuntu ISO ($FILE_SIZE bytes)"
                     return 0
                 else
                     print_warning "Downloaded file is not a valid ISO, trying next URL..."
@@ -447,17 +455,10 @@ main() {
     check_prerequisites
     create_build_dir
     
-    # Try to download Ubuntu ISO first
-    if download_ubuntu_iso; then
-        extract_iso
-        create_cloud_init
-        modify_boot_config
-        create_iso
-        create_instructions
-    else
-        # Fallback to cloud image method
-        create_iso_from_cloud_image
-    fi
+    # Skip Ubuntu ISO download and go straight to cloud image method
+    # This is more reliable and faster
+    print_status "Using cloud image method for ISO creation..."
+    create_iso_from_cloud_image
     
     cleanup
     
