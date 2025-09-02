@@ -1,0 +1,59 @@
+#cloud-config
+users:
+  - name: dev
+    groups: [adm, audio, cdrom, dialout, dip, floppy, lxd, netdev, plugdev, sudo, video]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ${ssh_public_key}
+    home: /home/dev
+    create_home: true
+
+# Enable passwordless sudo for dev user
+sudo:
+  - "dev ALL=(ALL) NOPASSWD:ALL"
+
+# Package updates
+package_update: true
+package_upgrade: true
+
+# Install essential packages
+packages:
+  - build-essential
+  - curl
+  - wget
+  - git
+  - vim
+  - less
+  - unzip
+  - net-tools
+  - openssh-server
+  - cloud-init
+  - qemu-guest-agent
+
+# Write files
+write_files:
+  - path: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    content: |
+      network: {config: disabled}
+  - path: /etc/ssh/sshd_config.d/99-dev-config.conf
+    content: |
+      PasswordAuthentication no
+      PermitRootLogin no
+      PubkeyAuthentication yes
+      AuthorizedKeysFile .ssh/authorized_keys
+      Port 22
+      Protocol 2
+
+# Run commands
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh
+  - systemctl enable qemu-guest-agent
+  - systemctl start qemu-guest-agent
+  - mkdir -p /home/dev/projects
+  - chown dev:dev /home/dev/projects
+  - chmod 755 /home/dev/projects
+
+# Final message
+final_message: "FullDevVM setup complete! User 'dev' created with SSH key access."

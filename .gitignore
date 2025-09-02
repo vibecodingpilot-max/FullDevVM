@@ -1,0 +1,47 @@
+# Build artifacts
+output/
+*.qcow2
+*.ova
+*.ovf
+*.vmdk
+
+# Packer files
+packer/variables.json
+packer/packer_cache/
+packer/logs/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# SSH keys (for security)
+*.pem
+*.key
+id_*
+
+# Backup files
+*.bak
+*.backup
+*.orig
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

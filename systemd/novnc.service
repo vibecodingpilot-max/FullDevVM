@@ -1,0 +1,21 @@
+[Unit]
+Description=noVNC WebSocket proxy
+After=network.target vncserver@1.service
+Wants=vncserver@1.service
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev
+
+# Wait for VNC server to be ready
+ExecStartPre=/bin/sleep 5
+ExecStart=/usr/bin/websockify --web /usr/share/novnc/ 6080 localhost:5901
+
+# Restart if it fails
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

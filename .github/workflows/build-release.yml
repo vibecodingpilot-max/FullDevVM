@@ -1,0 +1,205 @@
+name: Build and Release FullDevVM
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+        default: 'v1.0.0'
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Setup QEMU
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y qemu-system-x86 qemu-utils
+        
+    - name: Setup build tools
+      run: |
+        sudo apt-get install -y cdrtools curl
+        
+    - name: Build ISO
+      run: |
+        chmod +x build-iso.sh
+        ./build-iso.sh
+        
+    - name: Create checksum
+      run: |
+        cd output
+        sha256sum FullDevVM.iso > FullDevVM-SHA256.txt
+        cd ..
+        
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FullDevVM-ISO
+        path: output/FullDevVM.iso
+        
+    - name: Upload checksum artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: FullDevVM-Checksum
+        path: output/FullDevVM-SHA256.txt
+
+  create-release:
+    needs: build-iso
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Download ISO artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: FullDevVM-ISO
+        path: output/
+        
+    - name: Download checksum artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: FullDevVM-Checksum
+        path: output/
+        
+    - name: Get version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        fi
+        
+    - name: Create release notes
+      run: |
+        cat > RELEASE_NOTES.md << EOF
+        # FullDevVM ${{ steps.version.outputs.version }}
+        
+        ## 🚀 What's New
+        
+        - Complete Linux development environment
+        - Ubuntu 22.04 LTS with XFCE4 desktop
+        - Full polyglot developer toolchain
+        - Cursor AI IDE optimized
+        - Cross-platform ISO support
+        
+        ## 📦 What's Included
+        
+        - **FullDevVM.iso** - Bootable ISO image
+        - **FullDevVM-SHA256.txt** - Checksum verification
+        
+        ## 🛠️ Pre-installed Tools
+        
+        ### Languages & Runtimes
+        - Python 3.11+ with pip, virtualenv
+        - Node.js 18.x with npm, yarn
+        - Java 17 (OpenJDK)
+        - Go 1.20+
+        - Rust with cargo
+        - C/C++ with GCC, Make, CMake
+        
+        ### Development Tools
+        - Git - Version control
+        - Docker - Containerization
+        - VS Code Server - Web-based IDE
+        - Vim - Text editor
+        - htop, tree - System tools
+        
+        ### Desktop Environment
+        - XFCE4 - Lightweight desktop
+        - Firefox - Web browser
+        - VNC/noVNC - Remote desktop access
+        
+        ## 🚀 Quick Start
+        
+        1. **Download** FullDevVM.iso
+        2. **Create VM** in your virtualization platform
+        3. **Boot** from the ISO
+        4. **Wait** 10-15 minutes for automatic setup
+        5. **Connect** and start coding!
+        
+        ## 🔗 Connection Methods
+        
+        | Method | Access | Credentials |
+        |--------|--------|-------------|
+        | **SSH** | \`ssh dev@<vm-ip>\` | SSH key only |
+        | **VNC** | \`<vm-ip>:5901\` | Password: \`dev123\` |
+        | **noVNC** | \`http://<vm-ip>:6080\` | Password: \`dev123\` |
+        | **VS Code** | \`http://<vm-ip>:8080\` | No auth required |
+        
+        ## 📋 VM Configuration
+        
+        | Setting | Value |
+        |---------|-------|
+        | **RAM** | 4GB minimum |
+        | **CPU** | 2 cores minimum |
+        | **Disk** | 25GB minimum |
+        | **Network** | NAT or Bridged |
+        
+        ## 🖥️ Supported Platforms
+        
+        - **UTM** (macOS) - Recommended
+        - **VirtualBox** (All platforms)
+        - **VMware** (All platforms)
+        - **QEMU/KVM** (Linux)
+        - **Parallels** (macOS)
+        
+        ## 🛡️ Security Features
+        
+        - SSH key-only authentication
+        - UFW firewall enabled
+        - Fail2ban intrusion detection
+        - No root login allowed
+        - Audit logging enabled
+        
+        ## 🆘 Troubleshooting
+        
+        | Issue | Solution |
+        |-------|----------|
+        | **Installation takes time** | Wait 10-15 minutes for complete setup |
+        | **SSH not working** | Check VM network configuration |
+        | **VNC not working** | Ensure ports 5901 and 6080 are accessible |
+        | **Desktop not loading** | Check VNC service status |
+        
+        ## 📚 Documentation
+        
+        - [README.md](README.md) - Quick start guide
+        - [CONNECT.md](docs/CONNECT.md) - Detailed connection guide
+        - [SECURITY.md](docs/SECURITY.md) - Security configuration
+        
+        ## 🤝 Contributing
+        
+        Found a bug or want to contribute? Please open an issue or pull request!
+        
+        ## 📄 License
+        
+        This project is open source. See LICENSE file for details.
+        
+        ---
+        
+        **Ready to code? Download the ISO and start developing in minutes!** 🚀
+        EOF
+        
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: FullDevVM ${{ steps.version.outputs.version }}
+        body_path: RELEASE_NOTES.md
+        files: |
+          output/FullDevVM.iso
+          output/FullDevVM-SHA256.txt
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

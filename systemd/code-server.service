@@ -1,0 +1,20 @@
+[Unit]
+Description=VS Code Server
+After=network.target
+
+[Service]
+Type=simple
+User=dev
+Group=dev
+WorkingDirectory=/home/dev
+Environment=PATH=/home/dev/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=HOME=/home/dev
+
+ExecStart=/usr/bin/code-server --bind-addr 0.0.0.0:8080 --auth none --disable-telemetry
+
+# Restart if it fails
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
