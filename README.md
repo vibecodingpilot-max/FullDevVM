@@ -69,11 +69,19 @@ A complete, bootable Linux development environment with desktop GUI and full pol
 ## 📖 Platform-Specific Instructions
 
 ### UTM (macOS)
-1. Open UTM
-2. Create new VM → Linux
-3. Select `FullDevVM.iso`
-4. Configure: 4GB RAM, 2 CPU cores, 25GB disk
-5. Start VM
+**Option 1: Quick Setup (Recommended)**
+1. Download the ISO from the latest release
+2. Run: `./setup-utm.sh` (extracts files and creates UTM config)
+3. Open UTM → Click "Open" → Select `output/utm-setup/FullDevVM.utm`
+4. The VM will start with FullDevVM
+
+**Option 2: Manual Setup**
+1. Download the ISO from the latest release
+2. Mount the ISO and extract `FullDevVM.qcow2`
+3. Open UTM → "Create a New Virtual Machine"
+4. Select "Virtualize" → "Linux" → "Browse" → Select `FullDevVM.qcow2`
+5. Configure resources (4GB RAM, 2 CPUs recommended)
+6. Start the VM
 
 ### VirtualBox
 1. Open VirtualBox
